@@ -1,0 +1,36 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pipecat-sonex"
+version = "0.1.0"
+description = "SonexLabs Panini TTS processor for pipecat-ai real-time voice pipelines"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "SonexLabs", email = "hi@sonexlabs.com" }]
+keywords = ["pipecat", "tts", "voice-ai", "streaming", "panini"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "pipecat-ai>=1.1.0",
+    "aiohttp>=3.9.0",
+]
+
+[project.urls]
+Homepage = "https://sonexlabs.com"
+Documentation = "https://docs.sonexlabs.com"
+Repository = "https://github.com/sonexlabs/pipecat-sonex"
+"Bug Tracker" = "https://github.com/sonexlabs/pipecat-sonex/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pipecat_sonex"]
