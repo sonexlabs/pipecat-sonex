@@ -5,11 +5,11 @@ build-backend = "hatchling.build"
 [project]
 name = "pipecat-sonex"
 version = "0.1.0"
-description = "SonexLabs Panini TTS processor for pipecat-ai real-time voice pipelines"
+description = "SonexLabs TTS service for pipecat-ai real-time voice pipelines"
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "SonexLabs", email = "hi@sonexlabs.com" }]
-keywords = ["pipecat", "tts", "voice-ai", "streaming", "panini"]
+keywords = ["pipecat", "tts", "voice-ai", "streaming", "sonexlabs"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",

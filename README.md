@@ -1,22 +1,19 @@
 # pipecat-sonex
 
-> **SonexLabs Panini TTS** processor for [pipecat-ai](https://github.com/pipecat-ai/pipecat) real-time voice pipelines.
+> **SonexLabs TTS** for [pipecat-ai](https://github.com/pipecat-ai/pipecat) real-time voice pipelines.
 
 [![PyPI](https://img.shields.io/pypi/v/pipecat-sonex)](https://pypi.org/project/pipecat-sonex/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
-## What is this?
+`pipecat-sonex` provides `SonexTTSService` — a pipecat-native TTS service that connects any pipecat pipeline to the [SonexLabs](https://sonexlabs.com) Panini TTS API.
 
-`pipecat-sonex` adds a `PaniniStreamingTTSProcessor` that connects any pipecat pipeline to the SonexLabs Panini TTS GPU cluster.
+`SonexTTSService` extends pipecat's official `TTSService` base class, so it works exactly like `CartesiaTTSService`, `ElevenLabsTTSService`, and other first-party services:
 
-**Key features:**
-
-- **Streaming with sentence splitting** — synthesis starts before the LLM finishes generating, reducing time-to-first-audio dramatically.
-- **TTFB-gated inference lock** — the GPU is released as soon as inference finishes (on first response byte), so the next sentence begins GPU inference while the current WAV is still downloading. Saves ~300-680 ms per sentence on multi-sentence responses.
-- **Endpoint rotation** — pass multiple Panini cluster URLs for automatic load distribution.
-- **Telephony-ready** — set `sample_rate=8000` for Twilio/Exotel PCMU transports.
+- The base class handles **sentence aggregation**, **LLM token buffering**, **interruption recovery**, **TTSStartedFrame / TTSStoppedFrame**, and **metrics**.
+- You only need to configure credentials and voice.
+- Voice and language can be **changed mid-conversation** via `TTSUpdateSettingsFrame`.
 
 ---
 
@@ -32,97 +29,118 @@ uv add pipecat-sonex
 
 ## Quick start
 
-### WebRTC + OpenAI
+### 1. List available voices
 
-```python
-import asyncio
-import os
-from pipecat.pipeline.pipeline import Pipeline
-from pipecat.pipeline.runner import PipelineRunner
-from pipecat.pipeline.task import PipelineTask
-from pipecat.services.openai import OpenAILLMService
-from pipecat.transports.network.small_webrtc import SmallWebRTCTransport
-from pipecat_sonex import PaniniStreamingTTSProcessor
-
-PANINI_ENDPOINTS = os.environ["PANINI_TTS_ENDPOINTS"].split(",")  # e.g. "http://host:8000"
-SONEX_API_TOKEN  = os.environ["SONEX_API_TOKEN"]                  # vsk_...
-
-async def main():
-    transport = SmallWebRTCTransport(...)
-
-    tts = PaniniStreamingTTSProcessor(
-        api_token=SONEX_API_TOKEN,
-        model="panini",
-        voice="your-voice-id",   # from SonexLabs dashboard, or "auto"
-        language="en",
-        num_step=16,
-        speed=1.0,
-        sample_rate=24000,
-        endpoints=PANINI_ENDPOINTS,
-    )
-
-    llm = OpenAILLMService(api_key=os.environ["OPENAI_API_KEY"], model="gpt-4o-mini")
-
-    pipeline = Pipeline([
-        transport.input(),
-        llm,
-        tts,
-        transport.output(),
-    ])
-
-    runner = PipelineRunner()
-    task = PipelineTask(pipeline)
-    await runner.run(task)
-
-asyncio.run(main())
+```bash
+curl https://api.sonexlabs.com/v1/voices \
+  -H "Authorization: Bearer $SONEX_API_KEY"
 ```
 
-### Telephony (Twilio / Exotel)
+Copy a `voice_id` from the response — it is **required**.
+
+### 2. Add to your pipeline
 
 ```python
-tts = PaniniStreamingTTSProcessor(
-    api_token=SONEX_API_TOKEN,
-    model="panini",
-    voice="your-voice-id",
-    language="en",
-    num_step=16,
-    speed=1.0,
-    sample_rate=8000,   # PCMU for telephony transports
-    endpoints=PANINI_ENDPOINTS,
+from pipecat_sonex import SonexTTSService
+
+tts = SonexTTSService(
+    api_key="vsk_...",
+    voice="en-US-male-1",   # required — no default
+    language="en",          # optional
+    sample_rate=24000,      # 24000 for WebRTC, 8000 for telephony
 )
 ```
 
----
+Drop it into any pipeline the same way as any other pipecat TTS service:
 
-## Configuration reference
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `api_token` | `str` | *required* | SonexLabs API token (`vsk_...`) |
-| `model` | `str` | `"panini"` | Panini model name |
-| `voice` | `str` | `"auto"` | Voice ID from the SonexLabs dashboard |
-| `language` | `str` | `""` | BCP-47 language tag (`"en"`, `"hi"`, `"te"`, …) |
-| `num_step` | `int` | `16` | Diffusion sampling steps (higher = better quality, slower) |
-| `speed` | `float` | `1.0` | Speech rate multiplier |
-| `sample_rate` | `int` | `24000` | Output PCM sample rate in Hz |
-| `endpoints` | `List[str]` | *required* | One or more Panini cluster URLs |
-
----
-
-## Environment variables (recommended pattern)
-
-```bash
-SONEX_API_TOKEN=vsk_...
-PANINI_TTS_ENDPOINTS=http://157.15.202.177:8000
+```python
+pipeline = Pipeline([
+    transport.input(),
+    stt,
+    context_aggregator.user(),
+    llm,
+    tts,                    # ← SonexTTSService here
+    transport.output(),
+    context_aggregator.assistant(),
+])
 ```
 
 ---
 
-## Links
+## Constructor parameters
 
-- [SonexLabs docs](https://docs.sonexlabs.com)
-- [API reference](https://docs.sonexlabs.com/api-reference)
-- [pipecat-ai](https://github.com/pipecat-ai/pipecat)
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `api_key` | `str` | — | SonexLabs API key (`vsk_...`) |
+| `voice` | `str` | — | **Required.** Voice ID from `GET /v1/voices` |
+| `language` | `str` | `""` | BCP-47 tag (`"en"`, `"hi"`, `"te"`, …). Omit to auto-detect. |
+| `speed` | `float` | `1.0` | Speech rate multiplier (practical range: 0.75–1.5) |
+| `sample_rate` | `int` | `24000` | Output PCM rate. Use `8000` for Twilio/Exotel telephony. |
+| `endpoint` | `str` | `https://api.sonexlabs.com` | API base URL |
+| `settings` | `SonexTTSSettings` | `None` | Runtime-updatable settings (takes precedence) |
+
+---
+
+## Runtime settings update
+
+Change voice or language mid-conversation:
+
+```python
+from pipecat.frames.frames import TTSUpdateSettingsFrame
+from pipecat_sonex import SonexTTSSettings
+
+await task.queue_frames([
+    TTSUpdateSettingsFrame(delta=SonexTTSSettings(voice="hi-IN-female-1", language="hi"))
+])
+```
+
+---
+
+## Examples
+
+All examples are in the [`examples/`](examples/) directory.  Copy `.env.example` to `.env` and fill in your credentials before running.
+
+### WebRTC + OpenAI LLM
+
+Full browser-to-server voice bot using SmallWebRTC transport:
+
+```bash
+pip install "pipecat-ai[openai,deepgram,silero,webrtc]" pipecat-sonex python-dotenv fastapi uvicorn
+python examples/webrtc_openai.py
+# Open http://localhost:7860 and click Connect
+```
+
+### Twilio telephony
+
+```bash
+pip install "pipecat-ai[openai,deepgram,silero,twilio]" pipecat-sonex python-dotenv fastapi uvicorn
+python examples/telephony_twilio.py
+# Expose with ngrok, point Twilio webhook to https://<host>/incoming-call
+```
+
+### Exotel telephony
+
+```bash
+pip install "pipecat-ai[openai,deepgram,silero]" pipecat-sonex python-dotenv fastapi uvicorn
+python examples/telephony_exotel.py
+# Expose with ngrok, set Exotel Passthru URL to wss://<host>/ws/exotel
+```
+
+### Vobiz telephony
+
+`VobizFrameSerializer` is bundled in `pipecat_sonex.vobiz` — no extra package needed:
+
+```bash
+pip install "pipecat-ai[openai,deepgram,silero]" pipecat-sonex python-dotenv fastapi uvicorn
+python examples/telephony_vobiz.py
+# Set Vobiz WebSocket URL to wss://<host>/ws/vobiz
+```
+
+---
+
+## API reference
+
+See the full API documentation at [docs.sonexlabs.com/api-reference](https://docs.sonexlabs.com/api-reference).
 
 ---
 
