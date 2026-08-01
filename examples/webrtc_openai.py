@@ -39,7 +39,7 @@ DEEPGRAM_API_KEY    Deepgram API key
 
 import asyncio
 import os
-from contextlib import asynccontextmanager
+# from contextlib import asynccontextmanager  # ORIGINAL: unused import, left commented instead of deleted
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
@@ -50,7 +50,14 @@ from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
-from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
+# CHANGED (2026-08-01): pipecat-ai removed OpenAILLMContext in newer releases
+# (module pipecat.processors.aggregators.openai_llm_context no longer exists as of
+# pipecat-ai 1.1.0+, confirmed by inspecting the installed wheel directly).
+# It was replaced by a provider-agnostic LLMContext + LLMContextAggregatorPair.
+# ORIGINAL:
+# from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
+from pipecat.processors.aggregators.llm_context import LLMContext
+from pipecat.processors.aggregators.llm_response_universal import LLMContextAggregatorPair
 from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.transports.base_transport import TransportParams
@@ -105,8 +112,13 @@ async def run_bot(connection: SmallWebRTCConnection) -> None:
     )
 
     messages = [{"role": "system", "content": "You are a helpful voice assistant. Keep responses concise."}]
-    context = OpenAILLMContext(messages)
-    context_aggregator = llm.create_context_aggregator(context)
+    # CHANGED (2026-08-01): OpenAILLMContext + llm.create_context_aggregator() no longer
+    # exist in current pipecat-ai. Replaced with the universal LLMContext API.
+    # ORIGINAL:
+    # context = OpenAILLMContext(messages)
+    # context_aggregator = llm.create_context_aggregator(context)
+    context = LLMContext(messages)
+    context_aggregator = LLMContextAggregatorPair(context)
 
     pipeline = Pipeline([
         transport.input(),
@@ -207,9 +219,13 @@ async def index():
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=7860)
 
-    await runner.run(PipelineTask(pipeline, params=PipelineParams(allow_interruptions=True)))
-
-
-if __name__ == "__main__":
-    asyncio.run(run_bot(None))
-
+# ORIGINAL: leftover/duplicate code found after this point in the file as received.
+# Left here commented for reference — this caused a SyntaxError (`await` outside a
+# function) and would have failed anyway even if syntactically valid, since `runner`
+# and `pipeline` are local variables scoped inside run_bot() and don't exist here,
+# and run_bot(None) would crash because run_bot expects a real SmallWebRTCConnection.
+#     await runner.run(PipelineTask(pipeline, params=PipelineParams(allow_interruptions=True)))
+#
+#
+# if __name__ == "__main__":
+#     asyncio.run(run_bot(None))
