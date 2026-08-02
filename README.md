@@ -136,6 +136,10 @@ python examples/telephony_vobiz.py
 # Set Vobiz WebSocket URL to wss://<host>/ws/vobiz
 ```
 
+### LiveKit
+
+For a LiveKit room-based voice bot example, see the separate [`pipecat-sonex-livekit`](https://github.com/sonexlabs/pipecat-sonex-livekit) repo.
+
 ---
 
 ## API reference
