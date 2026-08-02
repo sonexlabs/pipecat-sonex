@@ -2,7 +2,7 @@
 SonexTTSService
 ===============
 A pipecat-ai ``TTSService`` that synthesises speech via the SonexLabs Panini
-TTS API (``POST /v1/audio/speech``).
+TTS API (``POST /v1/speech``).
 
 Extends the official ``TTSService`` base class so it plugs into any pipecat
 pipeline exactly like CartesiaTTSService, ElevenLabsTTSService, etc.  The
@@ -17,7 +17,7 @@ Runtime settings (voice, language, speed) can be changed mid-conversation via
 from __future__ import annotations
 
 import re
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, AsyncIterator
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -71,7 +71,7 @@ class SonexTTSSettings(TTSSettings):
 class SonexTTSService(TTSService):
     """SonexLabs Panini TTS service for pipecat pipelines.
 
-    Sends synthesised speech requests to ``POST /v1/audio/speech`` on the
+    Sends synthesised speech requests to ``POST /v1/speech`` on the
     SonexLabs API, streams back the WAV response, strips the WAV header, and
     yields ``TTSAudioRawFrame`` objects for pipecat's audio pipeline.
 
@@ -185,6 +185,88 @@ class SonexTTSService(TTSService):
         return cleaned.strip()
 
     # ------------------------------------------------------------------
+    # WAV parsing helper
+    # ------------------------------------------------------------------
+    #
+    # CHANGED (2026-08-01): the pipecat-ai base TTSService, when called with
+    # strip_wav_header=True, blindly strips exactly the first 44 bytes off
+    # the response and reads the sample rate from a fixed byte offset. That
+    # only works for the minimal/canonical WAV header. If the response ever
+    # includes any extra chunk before "data" (LIST/INFO, fact, extended
+    # "fmt "), real audio doesn't start at byte 44 and leftover header bytes
+    # get played back as if they were audio samples.
+    #
+    # This turned out NOT to be the actual cause of the noise heard during
+    # testing (see the endpoint fix below for the real cause), but it's
+    # still a correctness improvement worth keeping: it parses the real
+    # RIFF/WAVE chunk structure instead of guessing a fixed offset, so it
+    # stays correct even if SonexLabs' response format ever changes to
+    # include extra chunks.
+    #
+    # ORIGINAL call site (kept here for reference, no longer used):
+    #
+    #     async def _iter_chunks() -> AsyncGenerator[bytes, None]:
+    #         async for chunk in response.content.iter_chunked(8192):
+    #             yield chunk
+    #
+    #     # strip_wav_header=True: the base class strips the 44-byte WAV header
+    #     # from the first chunk and auto-detects the source sample rate,
+    #     # then resamples to self.sample_rate if they differ.
+    #     async for frame in self._stream_audio_frames_from_iterator(
+    #         _iter_chunks(),
+    #         strip_wav_header=True,
+    #         context_id=context_id,
+    #     ):
+    #         yield frame
+
+    @staticmethod
+    async def _split_wav_header(
+        iterator: AsyncIterator[bytes],
+    ) -> tuple[int, bytes, AsyncIterator[bytes]]:
+        """Consume *iterator* until the WAV ``data`` sub-chunk is located.
+
+        Walks the RIFF/WAVE chunk list properly (chunk id + chunk size,
+        skipping any chunks that aren't "fmt " or "data") rather than
+        assuming a fixed 44-byte header. Returns ``(sample_rate,
+        leftover_pcm_bytes, iterator)``.
+        """
+        buf = bytearray()
+        sample_rate: Optional[int] = None
+
+        async for chunk in iterator:
+            buf.extend(chunk)
+
+            if len(buf) < 12:
+                continue
+            if buf[0:4] != b"RIFF" or buf[8:12] != b"WAVE":
+                logger.warning(
+                    "SonexTTSService: response did not start with a RIFF/WAVE "
+                    "header; passing bytes through unparsed."
+                )
+                return 24000, bytes(buf), iterator
+
+            pos = 12
+            while len(buf) >= pos + 8:
+                chunk_id = bytes(buf[pos:pos + 4])
+                chunk_size = int.from_bytes(buf[pos + 4:pos + 8], "little")
+                body_start = pos + 8
+
+                if chunk_id == b"fmt ":
+                    if len(buf) < body_start + 16:
+                        break
+                    sample_rate = int.from_bytes(buf[body_start + 4:body_start + 8], "little")
+
+                if chunk_id == b"data":
+                    if len(buf) < body_start:
+                        break
+                    leftover = bytes(buf[body_start:])
+                    return sample_rate or 24000, leftover, iterator
+
+                pos = body_start + chunk_size + (chunk_size % 2)
+
+        return sample_rate or 24000, bytes(buf), iterator
+
+    # ------------------------------------------------------------------
     # Core synthesis — called by TTSService for each aggregated sentence
     # ------------------------------------------------------------------
 
@@ -207,16 +289,34 @@ class SonexTTSService(TTSService):
         if speed is NOT_GIVEN or speed is None:
             speed = 1.0
 
+        # CHANGED (2026-08-01): field names corrected to match SonexLabs' actual
+        # documented API schema (SpeechRequest in their OpenAPI spec). The
+        # original field names below don't exist in their schema at all, so
+        # requests were silently malformed — see the endpoint fix below for
+        # how this was diagnosed.
+        #
+        # ORIGINAL:
+        #     payload: dict = {
+        #         "input": cleaned,
+        #         "response_format": "wav",
+        #         "sample_rate": 24000,   # Panini native rate; pipecat resamples if needed
+        #         "speed": float(speed),
+        #     }
+        #     voice = self._settings.voice
+        #     if voice:
+        #         payload["voice"] = voice
+        #     language = self._settings.language
+        #     if language:
+        #         payload["language"] = language
         payload: dict = {
-            "input": cleaned,
-            "response_format": "wav",
-            "sample_rate": 24000,   # Panini native rate; pipecat resamples if needed
+            "text": cleaned,
+            "output_format": "wav",
             "speed": float(speed),
         }
 
         voice = self._settings.voice
         if voice:
-            payload["voice"] = voice
+            payload["voice_id"] = voice
 
         language = self._settings.language
         if language:
@@ -227,8 +327,23 @@ class SonexTTSService(TTSService):
         try:
             assert self._http_session is not None, "SonexTTSService: session not initialised (start() not called)"
 
+            # CHANGED (2026-08-01): corrected endpoint path. The original path
+            # (/v1/audio/speech) does not exist on SonexLabs' API — confirmed
+            # by checking their published OpenAPI spec, where the real
+            # text-to-speech route is documented as POST /v1/speech. Hitting
+            # the wrong path returned an HTTP 200 with an HTML page (not a
+            # proper 404), so pipecat never saw an error — it just streamed
+            # the HTML bytes into the audio pipeline as if they were PCM
+            # samples, which is what produced the noisy/garbled audio heard
+            # during testing.
+            #
+            # ORIGINAL:
+            #     async with self._http_session.post(
+            #         f"{self._endpoint}/v1/audio/speech",
+            #         json=payload,
+            #         ...
             async with self._http_session.post(
-                f"{self._endpoint}/v1/audio/speech",
+                f"{self._endpoint}/v1/speech",
                 json=payload,
                 timeout=aiohttp.ClientTimeout(total=30),
                 headers={
@@ -249,12 +364,21 @@ class SonexTTSService(TTSService):
                     async for chunk in response.content.iter_chunked(8192):
                         yield chunk
 
-                # strip_wav_header=True: the base class strips the 44-byte WAV header
-                # from the first chunk and auto-detects the source sample rate,
-                # then resamples to self.sample_rate if they differ.
+                # CHANGED (2026-08-01): use the proper WAV chunk parser above
+                # instead of strip_wav_header=True's fixed 44-byte assumption.
+                # See _split_wav_header() docstring for the full explanation.
+                sample_rate, leftover, remaining = await self._split_wav_header(_iter_chunks())
+
+                async def _pcm_stream() -> AsyncGenerator[bytes, None]:
+                    if leftover:
+                        yield leftover
+                    async for chunk in remaining:
+                        yield chunk
+
                 async for frame in self._stream_audio_frames_from_iterator(
-                    _iter_chunks(),
-                    strip_wav_header=True,
+                    _pcm_stream(),
+                    strip_wav_header=False,
+                    in_sample_rate=sample_rate,
                     context_id=context_id,
                 ):
                     yield frame

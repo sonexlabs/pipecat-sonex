@@ -52,7 +52,14 @@ from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
-from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
+# CHANGED (2026-08-01): same fix as examples/webrtc_openai.py — pipecat-ai
+# removed OpenAILLMContext in current releases (confirmed by inspecting the
+# installed pipecat-ai wheel directly; not present in 1.1.0 or 1.6.0).
+# Replaced with the provider-agnostic LLMContext + LLMContextAggregatorPair.
+# ORIGINAL:
+# from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
+from pipecat.processors.aggregators.llm_context import LLMContext
+from pipecat.processors.aggregators.llm_response_universal import LLMContextAggregatorPair
 from pipecat.runner.utils import parse_telephony_websocket
 from pipecat.serializers.exotel import ExotelFrameSerializer
 from pipecat.services.deepgram.stt import DeepgramSTTService
@@ -109,8 +116,13 @@ async def websocket_exotel(ws: WebSocket):
     )
 
     messages = [{"role": "system", "content": "You are a helpful phone assistant. Keep responses brief."}]
-    context = OpenAILLMContext(messages)
-    context_aggregator = llm.create_context_aggregator(context)
+    # CHANGED (2026-08-01): OpenAILLMContext + llm.create_context_aggregator() no
+    # longer exist in current pipecat-ai. Replaced with the universal LLMContext API.
+    # ORIGINAL:
+    # context = OpenAILLMContext(messages)
+    # context_aggregator = llm.create_context_aggregator(context)
+    context = LLMContext(messages)
+    context_aggregator = LLMContextAggregatorPair(context)
 
     pipeline = Pipeline([
         transport.input(),
@@ -138,4 +150,3 @@ async def websocket_exotel(ws: WebSocket):
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8080)
-
