@@ -2,13 +2,19 @@
 SonexTTSService
 ===============
 A pipecat-ai ``TTSService`` that synthesises speech via the SonexLabs Panini
-TTS API (``POST /v1/speech``).
+TTS API (``POST /v1/speech/stream``).
 
 Extends the official ``TTSService`` base class so it plugs into any pipecat
 pipeline exactly like CartesiaTTSService, ElevenLabsTTSService, etc.  The
 base class handles sentence aggregation, LLM token buffering, interruption
 recovery, metrics and TTSStartedFrame / TTSStoppedFrame bookkeeping — this
 class only needs to implement ``run_tts``.
+
+The streaming endpoint returns audio as chunked HTTP as soon as each
+sentence is ready rather than waiting for the entire utterance, so playback
+can start sooner. The underlying ``aiohttp.ClientSession`` uses a
+``TCPConnector`` with ``keepalive_timeout`` set, so connections are reused
+across requests instead of reconnecting for every sentence.
 
 Runtime settings (voice, language, speed) can be changed mid-conversation via
 ``TTSUpdateSettingsFrame(delta=SonexTTSService.Settings(voice="new-voice-id"))``.
@@ -71,9 +77,10 @@ class SonexTTSSettings(TTSSettings):
 class SonexTTSService(TTSService):
     """SonexLabs Panini TTS service for pipecat pipelines.
 
-    Sends synthesised speech requests to ``POST /v1/speech`` on the
-    SonexLabs API, streams back the WAV response, strips the WAV header, and
-    yields ``TTSAudioRawFrame`` objects for pipecat's audio pipeline.
+    Sends synthesised speech requests to ``POST /v1/speech/stream`` on the
+    SonexLabs API, streams back the WAV response chunk-by-chunk as it's
+    generated, strips the WAV header, and yields ``TTSAudioRawFrame``
+    objects for pipecat's audio pipeline.
 
     Parameters
     ----------
@@ -343,7 +350,7 @@ class SonexTTSService(TTSService):
             #         json=payload,
             #         ...
             async with self._http_session.post(
-                f"{self._endpoint}/v1/speech",
+                f"{self._endpoint}/v1/speech/stream",
                 json=payload,
                 timeout=aiohttp.ClientTimeout(total=30),
                 headers={

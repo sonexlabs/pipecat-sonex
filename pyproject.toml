@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pipecat-sonex"
-version = "0.1.0"
+version = "0.2.0"
 description = "SonexLabs TTS service for pipecat-ai real-time voice pipelines"
 readme = "README.md"
 license = { text = "MIT" }
