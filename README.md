@@ -3,6 +3,7 @@
 > **SonexLabs TTS** for [pipecat-ai](https://github.com/pipecat-ai/pipecat) real-time voice pipelines.
 
 [![PyPI](https://img.shields.io/pypi/v/pipecat-sonex)](https://pypi.org/project/pipecat-sonex/)
+[![Python](https://img.shields.io/pypi/pyversions/pipecat-sonex)](https://pypi.org/project/pipecat-sonex/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
@@ -14,6 +15,12 @@
 - The base class handles **sentence aggregation**, **LLM token buffering**, **interruption recovery**, **TTSStartedFrame / TTSStoppedFrame**, and **metrics**.
 - You only need to configure credentials and voice.
 - Voice and language can be **changed mid-conversation** via `TTSUpdateSettingsFrame`.
+
+---
+
+## Streaming and connection reuse
+
+Requests go to SonexLabs' `/v1/speech/stream` endpoint, so audio is delivered as chunked HTTP as soon as each sentence is generated instead of waiting for the full utterance, reducing time-to-first-audio. The underlying `aiohttp.ClientSession` uses a `TCPConnector` with `keepalive_timeout` set, so connections are pooled and reused across requests rather than reconnecting for every sentence.
 
 ---
 
