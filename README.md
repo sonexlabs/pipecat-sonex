@@ -6,6 +6,10 @@
 [![Python](https://img.shields.io/pypi/pyversions/pipecat-sonex)](https://pypi.org/project/pipecat-sonex/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+Tested with Pipecat v1.7.0.
+
+<!-- TODO: if you work at SonexLabs, state that here per Pipecat's community integration guide -->
+
 ---
 
 `pipecat-sonex` provides `SonexTTSService` — a pipecat-native TTS service that connects any pipecat pipeline to the [SonexLabs](https://sonexlabs.com) Panini TTS API.
@@ -106,6 +110,16 @@ await task.queue_frames([
 ## Examples
 
 All examples are in the [`examples/`](examples/) directory.  Copy `.env.example` to `.env` and fill in your credentials before running.
+
+### Minimal (foundational example)
+
+The smallest possible pipeline — just speaks one line and exits:
+
+```bash
+pip install "pipecat-ai[webrtc]" pipecat-sonex python-dotenv fastapi uvicorn
+python examples/01_say_one_thing.py
+# Open http://localhost:7860/client/ and click Connect
+```
 
 ### WebRTC + OpenAI LLM
 
