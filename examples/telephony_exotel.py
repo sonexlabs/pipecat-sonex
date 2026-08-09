@@ -36,7 +36,7 @@ Environment variables
 ---------------------
 SONEX_API_KEY       SonexLabs API key (vsk_...)
 SONEX_VOICE_ID      Voice ID from GET /v1/voices (required)
-SONEX_LANGUAGE      BCP-47 language tag, e.g. "hi" for Hindi (optional)
+SONEX_LANGUAGE      Language code, e.g. "hi" for Hindi (optional, leave unset to auto-detect)
 OPENAI_API_KEY      OpenAI API key
 DEEPGRAM_API_KEY    Deepgram API key
 """

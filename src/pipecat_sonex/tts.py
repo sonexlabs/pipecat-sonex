@@ -59,7 +59,7 @@ class SonexTTSSettings(TTSSettings):
         Voice ID from the SonexLabs voice library, e.g. ``"en-US-male-1"``.
         Required — there is no default voice.
     language:
-        BCP-47 language tag, e.g. ``"en"``, ``"hi"``, ``"te"``.  Omit to
+        Language code, e.g. ``"en"``, ``"hi"``, ``"te"``. Leave unset to
         let Panini auto-detect from the input text.
     speed:
         Speech rate multiplier.  ``1.0`` is normal speed; ``0.75``–``1.5``
