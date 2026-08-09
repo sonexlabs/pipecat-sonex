@@ -76,13 +76,20 @@ pipeline = Pipeline([
 
 ## Constructor parameters
 
+Sent to the SonexLabs API:
+
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `api_key` | `str` | — | SonexLabs API key (`vsk_...`) |
 | `voice` | `str` | — | **Required.** Voice ID from `GET /v1/voices` |
 | `language` | `str` | `""` | BCP-47 tag (`"en"`, `"hi"`, `"te"`, …). Omit to auto-detect. |
 | `speed` | `float` | `1.0` | Speech rate multiplier (practical range: 0.75–1.5) |
-| `sample_rate` | `int` | `24000` | Output PCM rate. Use `8000` for Twilio/Exotel telephony. |
+
+Client-side only — not part of the API request:
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `sample_rate` | `int` | `24000` | Target rate for pipecat's audio pipeline. Panini generates audio at its own native rate (read from the response's WAV header) and pipecat resamples to this value if they differ — the API itself has no `sample_rate` field. Use `8000` for Twilio/Exotel telephony. |
 | `endpoint` | `str` | `https://api.sonexlabs.com` | API base URL |
 | `settings` | `SonexTTSSettings` | `None` | Runtime-updatable settings (takes precedence) |
 

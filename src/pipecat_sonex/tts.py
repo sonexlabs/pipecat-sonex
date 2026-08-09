@@ -94,8 +94,11 @@ class SonexTTSService(TTSService):
     speed:
         Speech rate multiplier.  Defaults to ``1.0``.
     sample_rate:
-        PCM sample rate in Hz for the pipecat pipeline.  Defaults to
-        ``24000`` (WebRTC).  Use ``8000`` for Twilio / Exotel telephony.
+        Client-side only — not sent to the SonexLabs API, which has no
+        ``sample_rate`` field. Panini generates audio at its own native
+        rate (read from the response's WAV header); pipecat resamples to
+        this target rate for the pipeline if they differ. Defaults to
+        ``24000`` (WebRTC). Use ``8000`` for Twilio / Exotel telephony.
     endpoint:
         SonexLabs API base URL.  Defaults to ``https://api.sonexlabs.com``.
     settings:
