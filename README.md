@@ -54,9 +54,10 @@ tts = SonexTTSService(
     api_key="vsk_...",
     voice="9b8fsavyez",     # Diya (English), from GET /v1/voices — required, no default
     language="en",          # optional, leave unset to auto-detect
-    sample_rate=24000,      # 24000 for WebRTC, 8000 for telephony
 )
 ```
+
+For telephony (Twilio/Exotel/Vobiz), pass `sample_rate=8000` — see [Constructor parameters](#constructor-parameters).
 
 Drop it into any pipeline the same way as any other pipecat TTS service:
 

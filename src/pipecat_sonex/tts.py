@@ -111,7 +111,7 @@ class SonexTTSService(TTSService):
 
         tts = SonexTTSService(
             api_key=os.environ["SONEX_API_KEY"],
-            voice="72ly9crx9v",  # from GET /v1/voices
+            voice="9b8fsavyez",  # Diya (English), from GET /v1/voices
             language="en",
             sample_rate=8000,   # for Twilio telephony
         )
