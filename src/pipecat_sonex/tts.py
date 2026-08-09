@@ -56,7 +56,8 @@ class SonexTTSSettings(TTSSettings):
     Parameters
     ----------
     voice:
-        Voice ID from the SonexLabs voice library, e.g. ``"en-US-male-1"``.
+        Voice ID from the SonexLabs voice library, e.g. ``"72ly9crx9v"``
+        (list available voices with ``GET /v1/voices``).
         Required — there is no default voice.
     language:
         Language code, e.g. ``"en"``, ``"hi"``, ``"te"``. Leave unset to
@@ -110,7 +111,7 @@ class SonexTTSService(TTSService):
 
         tts = SonexTTSService(
             api_key=os.environ["SONEX_API_KEY"],
-            voice="en-US-male-1",
+            voice="72ly9crx9v",  # from GET /v1/voices
             language="en",
             sample_rate=8000,   # for Twilio telephony
         )
