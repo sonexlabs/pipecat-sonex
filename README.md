@@ -97,7 +97,7 @@ from pipecat.frames.frames import TTSUpdateSettingsFrame
 from pipecat_sonex import SonexTTSSettings
 
 await task.queue_frames([
-    TTSUpdateSettingsFrame(delta=SonexTTSSettings(voice="hi-IN-female-1", language="hi"))
+    TTSUpdateSettingsFrame(delta=SonexTTSSettings(voice="lkwlapu6ab", language="hi"))  # Priya, from GET /v1/voices
 ])
 ```
 
