@@ -32,7 +32,7 @@ Environment variables
 ---------------------
 SONEX_API_KEY       SonexLabs API key (vsk_...)
 SONEX_VOICE_ID      Voice ID from GET /v1/voices (required)
-SONEX_LANGUAGE      Language code, e.g. "en" (optional, leave unset to auto-detect)
+SONEX_LANGUAGE      Optional language override (leave unset to auto-detect)
 OPENAI_API_KEY      OpenAI API key
 DEEPGRAM_API_KEY    Deepgram API key
 """
@@ -107,7 +107,7 @@ async def run_bot(connection: SmallWebRTCConnection) -> None:
     tts = SonexTTSService(
         api_key=os.environ["SONEX_API_KEY"],
         voice=os.environ["SONEX_VOICE_ID"],           # required — get from GET /v1/voices
-        language=os.environ.get("SONEX_LANGUAGE", "en"),
+        language=os.environ.get("SONEX_LANGUAGE", ""),
         sample_rate=24000,
     )
 

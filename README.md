@@ -53,11 +53,10 @@ from pipecat_sonex import SonexTTSService
 tts = SonexTTSService(
     api_key="vsk_...",
     voice="9b8fsavyez",     # Diya (English), from GET /v1/voices — required, no default
-    language="en",          # optional, leave unset to auto-detect
 )
 ```
 
-For telephony (Twilio/Exotel/Vobiz), pass `sample_rate=8000` — see [Constructor parameters](#constructor-parameters).
+Language is optional — leave it unset and Panini auto-detects from the input text. For telephony (Twilio/Exotel/Vobiz), pass `sample_rate=8000` — see [Constructor parameters](#constructor-parameters).
 
 Drop it into any pipeline the same way as any other pipecat TTS service:
 
@@ -81,7 +80,7 @@ pipeline = Pipeline([
 |-----------|------|---------|-------------|
 | `api_key` | `str` | — | SonexLabs API key (`vsk_...`) |
 | `voice` | `str` | — | **Required.** Voice ID from `GET /v1/voices` |
-| `language` | `str` | `""` | Language code (`"en"`, `"hi"`, `"te"`, …). Leave unset to auto-detect. |
+| `language` | `str` | `""` | Optional. Leave unset to auto-detect. |
 | `speed` | `float` | `1.0` | Speech rate multiplier (practical range: 0.75–1.5) |
 | `sample_rate` | `int` | `24000` | Pipeline output rate in Hz. Not sent to the API — Panini always returns audio at its native rate; pipecat resamples to this value. Use `8000` for Twilio/Exotel telephony. |
 | `endpoint` | `str` | `https://api.sonexlabs.com` | API base URL |
@@ -98,7 +97,7 @@ from pipecat.frames.frames import TTSUpdateSettingsFrame
 from pipecat_sonex import SonexTTSSettings
 
 await task.queue_frames([
-    TTSUpdateSettingsFrame(delta=SonexTTSSettings(voice="lkwlapu6ab", language="hi"))  # Priya, from GET /v1/voices
+    TTSUpdateSettingsFrame(delta=SonexTTSSettings(voice="lkwlapu6ab"))  # Priya, from GET /v1/voices
 ])
 ```
 

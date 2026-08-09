@@ -60,8 +60,8 @@ class SonexTTSSettings(TTSSettings):
         (list available voices with ``GET /v1/voices``).
         Required — there is no default voice.
     language:
-        Language code, e.g. ``"en"``, ``"hi"``, ``"te"``. Leave unset to
-        let Panini auto-detect from the input text.
+        Optional language override. Leave unset to let Panini
+        auto-detect from the input text.
     speed:
         Speech rate multiplier.  ``1.0`` is normal speed; ``0.75``–``1.5``
         are practical limits.
@@ -91,7 +91,8 @@ class SonexTTSService(TTSService):
         Voice ID from the SonexLabs voice library.  **Required** — obtain a
         valid ID from ``GET /v1/voices`` or the SonexLabs dashboard.
     language:
-        BCP-47 language tag (e.g. ``"en"``, ``"hi"``).  Optional.
+        Optional language override. Leave unset to let Panini
+        auto-detect from the input text.
     speed:
         Speech rate multiplier.  Defaults to ``1.0``.
     sample_rate:
@@ -112,7 +113,6 @@ class SonexTTSService(TTSService):
         tts = SonexTTSService(
             api_key=os.environ["SONEX_API_KEY"],
             voice="9b8fsavyez",  # Diya (English), from GET /v1/voices
-            language="en",
             sample_rate=8000,   # for Twilio telephony
         )
     """

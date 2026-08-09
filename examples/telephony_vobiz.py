@@ -35,7 +35,7 @@ Environment variables
 ---------------------
 SONEX_API_KEY       SonexLabs API key (vsk_...)
 SONEX_VOICE_ID      Voice ID from GET /v1/voices (required)
-SONEX_LANGUAGE      Language code, e.g. "hi" for Hindi (optional, leave unset to auto-detect)
+SONEX_LANGUAGE      Optional language override (leave unset to auto-detect)
 OPENAI_API_KEY      OpenAI API key
 DEEPGRAM_API_KEY    Deepgram API key
 """
@@ -105,7 +105,7 @@ async def websocket_vobiz(ws: WebSocket):
     tts = SonexTTSService(
         api_key=os.environ["SONEX_API_KEY"],
         voice=os.environ["SONEX_VOICE_ID"],           # required — get from GET /v1/voices
-        language=os.environ.get("SONEX_LANGUAGE", "hi"),   # Hindi default for Vobiz India
+        language=os.environ.get("SONEX_LANGUAGE", ""),    # optional, leave unset to auto-detect
         sample_rate=VOBIZ_SAMPLE_RATE,                # pipecat resamples 24kHz→8kHz automatically
     )
 
