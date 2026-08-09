@@ -8,7 +8,7 @@
 
 Tested with Pipecat v1.7.0.
 
-<!-- TODO: if you work at SonexLabs, state that here per Pipecat's community integration guide -->
+Maintained by [SonexLabs](https://sonexlabs.com) — contact: support@sonexlabs.com
 
 ---
 
