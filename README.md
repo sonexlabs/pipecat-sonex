@@ -52,7 +52,7 @@ from pipecat_sonex import SonexTTSService
 
 tts = SonexTTSService(
     api_key="vsk_...",
-    voice="72ly9crx9v",     # from GET /v1/voices — required, no default
+    voice="9b8fsavyez",     # Diya (English), from GET /v1/voices — required, no default
     language="en",          # optional, leave unset to auto-detect
     sample_rate=24000,      # 24000 for WebRTC, 8000 for telephony
 )

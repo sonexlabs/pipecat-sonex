@@ -9,3 +9,4 @@ venv/
 .pytest_cache/
 *.wav
 *.mp3
+test_readme_*.py
